@@ -3,8 +3,9 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+
+    <!-- IMPORTANT pour NTport 32 bits -->
+    <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>
 
 </Project>
