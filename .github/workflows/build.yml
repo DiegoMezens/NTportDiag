@@ -1,7 +1,29 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <PlatformTarget>x86</PlatformTarget>
-  </PropertyGroup>
-</Project>
+name: Build NTportDiag
+
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore NTportDiag.csproj
+
+      - name: Build & Publish x86
+        run: dotnet publish NTportDiag.csproj -c Release -r win-x86 --self-contained true
+
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: NTportDiag
+          path: bin/Release/**/publish/*.exe
