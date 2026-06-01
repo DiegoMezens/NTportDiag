@@ -1,81 +1,136 @@
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
+using System.Windows.Forms;
 
-class Program
+namespace LPTControl
 {
-    // ===== Tentative API 1 (Outport/Inport) =====
-    [DllImport("NTport.dll", EntryPoint = "Outport", CallingConvention = CallingConvention.StdCall)]
-    public static extern void Outport(int address, int value);
-
-    [DllImport("NTport.dll", EntryPoint = "Inport", CallingConvention = CallingConvention.StdCall)]
-    public static extern int Inport(int address);
-
-    // ===== Config =====
-    static int baseAddress = 0xCEFC;
-
-    static void Main()
+    public partial class Form1 : Form
     {
-        Console.WriteLine("=== NTport DIAGNOSTIC TOOL ===");
-        Console.WriteLine();
+        [DllImport("NTport.dll")]
+        public static extern void Outport(int address, int value);
 
-        try
+        [DllImport("NTport.dll")]
+        public static extern int Inport(int address);
+
+        CheckBox[] bits;
+        TextBox addressBox;
+        int baseAddress;
+
+        public Form1()
         {
-            Console.WriteLine("[1] Test DLL load...");
-            Console.WriteLine("NTport.dll OK (chargée)");
+            InitializeComponent();
+            InitUI();
+            LoadConfig();
+        }
 
-            Console.WriteLine();
+        void InitUI()
+        {
+            this.Text = "NTport LPT Control";
+            this.Width = 500;
+            this.Height = 200;
 
-            Console.WriteLine("[2] Adresse détectée : 0x" + baseAddress.ToString("X"));
+            Label lbl = new Label();
+            lbl.Text = "Adresse (HEX):";
+            lbl.Left = 20;
+            lbl.Top = 10;
+            this.Controls.Add(lbl);
 
-            Console.WriteLine();
+            addressBox = new TextBox();
+            addressBox.Left = 120;
+            addressBox.Top = 10;
+            addressBox.Width = 100;
+            this.Controls.Add(addressBox);
 
-            Console.WriteLine("[3] Test écriture 0x01 sur port...");
-            Outport(baseAddress, 0x01);
-            Console.WriteLine("WRITE OK");
+            Button saveBtn = new Button();
+            saveBtn.Text = "Save";
+            saveBtn.Left = 240;
+            saveBtn.Top = 8;
+            saveBtn.Click += SaveBtn_Click;
+            this.Controls.Add(saveBtn);
 
-            Console.WriteLine();
+            bits = new CheckBox[8];
 
-            Console.WriteLine("[4] Test lecture...");
+            for (int i = 0; i < 8; i++)
+            {
+                bits[i] = new CheckBox();
+                bits[i].Text = "D" + i;
+                bits[i].Left = 20 + i * 50;
+                bits[i].Top = 50;
+                this.Controls.Add(bits[i]);
+            }
+
+            Button writeBtn = new Button();
+            writeBtn.Text = "Write";
+            writeBtn.Top = 100;
+            writeBtn.Left = 20;
+            writeBtn.Click += WriteBtn_Click;
+            this.Controls.Add(writeBtn);
+
+            Button readBtn = new Button();
+            readBtn.Text = "Read";
+            readBtn.Top = 100;
+            readBtn.Left = 120;
+            readBtn.Click += ReadBtn_Click;
+            this.Controls.Add(readBtn);
+        }
+
+        void LoadConfig()
+        {
+            try
+            {
+                string text = File.ReadAllText("config.txt").Trim();
+
+                if (text.StartsWith("0x"))
+                    text = text.Substring(2);
+
+                baseAddress = Convert.ToInt32(text, 16);
+
+                addressBox.Text = baseAddress.ToString("X");
+            }
+            catch
+            {
+                baseAddress = 0x378;
+                addressBox.Text = "378";
+            }
+        }
+
+        void SaveConfig()
+        {
+            File.WriteAllText("config.txt", addressBox.Text.Trim());
+        }
+
+        int BuildByte()
+        {
+            int value = 0;
+
+            for (int i = 0; i < 8; i++)
+                if (bits[i].Checked)
+                    value |= (1 << i);
+
+            return value;
+        }
+
+        void WriteBtn_Click(object sender, EventArgs e)
+        {
+            baseAddress = Convert.ToInt32(addressBox.Text, 16);
+            Outport(baseAddress, BuildByte());
+        }
+
+        void ReadBtn_Click(object sender, EventArgs e)
+        {
+            baseAddress = Convert.ToInt32(addressBox.Text, 16);
+
             int value = Inport(baseAddress);
-            Console.WriteLine("READ OK : 0x" + value.ToString("X2"));
 
-            Console.WriteLine();
-
-            Console.WriteLine("=== RESULTAT ===");
-            Console.WriteLine("✔ Driver OK");
-            Console.WriteLine("✔ I/O accessible");
-        }
-        catch (DllNotFoundException)
-        {
-            Console.WriteLine("❌ NTport.dll introuvable");
-            Console.WriteLine("→ mettre NTport.dll dans le dossier EXE");
-        }
-        catch (EntryPointNotFoundException ex)
-        {
-            Console.WriteLine("❌ Fonction DLL incorrecte");
-            Console.WriteLine("→ NTport.dll ne contient pas Outport/Inport");
-            Console.WriteLine(ex.Message);
-        }
-        catch (AccessViolationException)
-        {
-            Console.WriteLine("❌ ACCES REFUSE (driver ou Windows bloque I/O)");
-            Console.WriteLine("→ lancer en admin + vérifier driver NTport");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("❌ ERREUR GENERALE");
-            Console.WriteLine(ex.Message);
-
-            Console.WriteLine();
-            Console.WriteLine("👉 Causes possibles :");
-            Console.WriteLine("- mauvaise fonction DLL (Out32/Inp32 peut-être)");
-            Console.WriteLine("- mauvaise architecture x86/x64");
-            Console.WriteLine("- driver NTport non actif");
-            Console.WriteLine("- adresse I/O invalide");
+            for (int i = 0; i < 8; i++)
+                bits[i].Checked = (value & (1 << i)) != 0;
         }
 
-        Console.WriteLine();
-        Console.WriteLine("Appuyer sur une touche...");
-        Console.ReadKey();
+        void SaveBtn_Click(object sender, EventArgs e)
+        {
+            SaveConfig();
+            MessageBox.Show("Config sauvegardée");
+        }
     }
 }
