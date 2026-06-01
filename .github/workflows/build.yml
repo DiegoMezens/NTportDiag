@@ -1,4 +1,4 @@
-name: Build EXE
+name: Build NTportDiag
 
 on:
   push:
@@ -10,16 +10,15 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+    - uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
 
-    - name: Publish
-      run: dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+    - run: dotnet restore NTportDiag.csproj
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
+    - run: dotnet publish NTportDiag.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+
+    - uses: actions/upload-artifact@v4
       with:
         name: NTportDiag
         path: bin/Release/**/publish/*.exe
